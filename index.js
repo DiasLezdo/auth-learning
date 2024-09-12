@@ -9,7 +9,7 @@ const cookieParse = require("cookie-parser");
 const errorHandler = require("./middleware/error");
 
 // ---
-const ourRoutes = require("./routes/our");
+// const ourRoutes = require("./routes/our");
 const userRoutes = require("./routes/user");
 
 const allowedOrigin = process.env.FRONTEND_URI; // Update this to your client’s origin
@@ -28,7 +28,7 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-app.use("/api", ourRoutes);
+// app.use("/api", ourRoutes);
 app.use("/api", userRoutes);
 
 // error middleware should after api routes
