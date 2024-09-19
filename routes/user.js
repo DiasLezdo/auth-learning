@@ -18,6 +18,9 @@ const {
   withoutPackage2,
   githubRegister,
   githubCallback,
+  twitterRegister,
+  twitterCallback,
+  twitterPassportCallback,
 } = require("../controller/user");
 const protect = require("../middleware/auth");
 
@@ -37,6 +40,28 @@ router.get("/google/callback", withoutPackage2);
 
 router.get("/auth/github", githubRegister);
 router.get("/github/callback", githubCallback);
+
+// twitter auth
+
+// without email and package
+// router.get("/auth/twitter", twitterRegister);
+// router.get("/twitter/callback", twitterCallback);
+
+// with email and package
+router.get(
+  "/auth/twitter",
+  passport.authenticate("twitter", { session: false })
+);
+
+// Twitter OAuth callback route (stateless)
+router.get(
+  "/twitter/callback",
+  passport.authenticate("twitter", {
+    session: false,
+    failureRedirect: `${process.env.FRONTEND_URI}`,
+  }),
+  twitterPassportCallback // Call controller for further processing
+);
 
 // ----------------------------------------------------------------
 router.get("/getuser", protect, getUser);

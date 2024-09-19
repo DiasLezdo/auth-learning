@@ -319,7 +319,202 @@ exports.withoutPackage2 = asyncHandler(async (req, res) => {
 
 // ----------------------------------------------
 
-// FACEBOOK
+// TWITTER
+
+// without Email just user details
+
+exports.twitterRegister = asyncHandler(async (req, res) => {
+  const twitterAuthUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${
+    process.env.TWITTER_CLIENT_ID
+  }&redirect_uri=${encodeURIComponent(
+    process.env.BACKEND_URI
+  )}/api/twitter/callback&scope=tweet.read%20users.read%20offline.access&state=state123&code_challenge=challenge&code_challenge_method=plain`;
+
+  res.redirect(twitterAuthUrl);
+});
+
+exports.twitterCallback = asyncHandler(async (req, res) => {
+  const { code } = req.query;
+
+  try {
+    // Exchange the authorization code for an access token
+    const tokenResponse = await axios.post(
+      "https://api.twitter.com/2/oauth2/token",
+      {
+        code,
+        grant_type: "authorization_code",
+        client_id: process.env.TWITTER_CLIENT_ID,
+        redirect_uri: `${process.env.BACKEND_URI}/api/twitter/callback`,
+        code_verifier: "challenge", // This should be the same as in the /auth/twitter request
+      },
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${Buffer.from(
+            `${process.env.TWITTER_CLIENT_ID}:${process.env.TWITTER_CLIENT_SECRET}`
+          ).toString("base64")}`,
+        },
+      }
+    );
+
+    const accessToken = tokenResponse.data.access_token;
+
+    // Step 3: Use the access token to get user info from Twitter
+    const userInfoResponse = await axios.get(
+      // "https://api.twitter.com/2/users/me",
+      //     "https://api.twitter.com/2/users/me?user.fields=profile_image_url,created_at,description,location,public_metrics",
+      //     {
+      // "data": {
+      //   "id": "1836001870713688064",
+      //   "name": "Diaz Lezdo",
+      //   "username": "DLezdo",
+      //   "profile_image_url": "https://pbs.twimg.com/profile_images/...",
+      //   "created_at": "2024-09-19T14:17:03.000Z",
+      //   "description": "Tech enthusiast and lawyer",
+      //   "location": "Alpharetta, GA",
+      //   "public_metrics": {
+      //     "followers_count": 1000,
+      //     "following_count": 200,
+      //     "tweet_count": 300
+      //   },
+      //   "verified": false
+      // }
+      // }
+      "https://api.twitter.com/2/users/me?user.fields=profile_image_url,description",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    const userProfile = userInfoResponse.data;
+
+    console.log("userPro", userProfile);
+
+    // Process user profile and either update or create a new user in your database
+    // const { id_str, email, name, profile_image_url_https } = userProfile;
+    // let userResponse;
+
+    // const existingUser = await User.findOne({ email });
+    // if (existingUser) {
+    //   const updatedUser = await User.findByIdAndUpdate(
+    //     existingUser._id,
+    //     { verified: true },
+    //     { new: true }
+    //   );
+    //   userResponse = updatedUser ? updatedUser.toObject() : null;
+    // } else {
+    //   const newUser = await User.create({
+    //     first_name: name,
+    //     photo: profile_image_url_https,
+    //     email,
+    //     oauthId: id_str,
+    //     verified: true,
+    //   });
+    //   userResponse = newUser.toObject();
+    // }
+
+    // if (!userResponse) {
+    //   return res.status(404).json({ message: "User not found." });
+    // }
+
+    // // Clean the response object by removing sensitive fields
+    // delete userResponse.password;
+    // delete userResponse.role;
+    // delete userResponse.createdAt;
+    // delete userResponse.updatedAt;
+    // delete userResponse.__v;
+
+    // // Generate JWT token
+    // const jwtToken = generateToken(userResponse._id);
+
+    // // Set the token in an HTTP-only cookie
+    // res.cookie("token", jwtToken, {
+    //   path: "/",
+    //   httpOnly: true,
+    //   secure: process.env.NODE_ENV === "production",
+    //   sameSite: process.env.NODE_ENV === "production" ? "Strict" : "Lax",
+    //   maxAge: 15 * 60 * 1000, // 15 minutes
+    // });
+
+    // // Redirect the user to your frontend with their info and token in the query string
+    // res.redirect(
+    //   `${process.env.FRONTEND_URI}/auth-callback?user=${encodeURIComponent(
+    //     JSON.stringify(userResponse)
+    //   )}&token=${jwtToken}`
+    // );
+  } catch (error) {
+    console.error("Error during OAuth callback:", error);
+    res.status(500).send("Authentication failed.");
+  }
+});
+
+// with email and details whole package
+exports.twitterPassportCallback = asyncHandler(async (req, res) => {
+  try {
+    const userProfile = req.user;
+
+    console.log("userPro", userProfile);
+
+    // Process user profile and either update or create a new user in your database
+    const { id, email, displayName, profile } = userProfile;
+    let userResponse;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      const updatedUser = await User.findByIdAndUpdate(
+        existingUser._id,
+        { verified: true },
+        { new: true }
+      );
+      userResponse = updatedUser ? updatedUser.toObject() : null;
+    } else {
+      const newUser = await User.create({
+        first_name: displayName,
+        photo: profile,
+        email,
+        oauthId: id,
+        verified: true,
+      });
+      userResponse = newUser.toObject();
+    }
+
+    if (!userResponse) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Clean the response object by removing sensitive fields
+    delete userResponse.password;
+    delete userResponse.role;
+    delete userResponse.createdAt;
+    delete userResponse.updatedAt;
+    delete userResponse.__v;
+
+    // Generate JWT token
+    const jwtToken = generateToken(userResponse._id);
+
+    // Set the token in an HTTP-only cookie
+    res.cookie("token", jwtToken, {
+      path: "/",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "Strict" : "Lax",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    // Redirect the user to your frontend with their info and token in the query string
+    res.redirect(
+      `${process.env.FRONTEND_URI}/auth-callback?user=${encodeURIComponent(
+        JSON.stringify(userResponse)
+      )}&token=${jwtToken}`
+    );
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Authentication failed", error: error.message });
+  }
+});
 
 // ------------------------------------------------------
 
