@@ -16,6 +16,8 @@ const userRoutes = require("./routes/user");
 
 const allowedOrigin = process.env.FRONTEND_URI; // Update this to your client’s origin
 
+app.set("name", "Auth-Learning");
+
 app.use(
   cors({
     origin: allowedOrigin,

@@ -672,7 +672,7 @@ exports.loginUser = asyncHandler(async (req, res) => {
 
       // Reset Email message we send too url (above link)
       const message = `
-       <h2>Hello ${user.name}</h2>
+       <h2>Hello ${user.first_name}</h2>
        <p>Here is your OTP</p>  
        <p>This OTP is valid for only a minute.</p>
        <h1 style="color:red;">${otpDigit}</h1>
