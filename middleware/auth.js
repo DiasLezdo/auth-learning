@@ -34,7 +34,7 @@ const protect = asyncHandler(async (req, res, next) => {
       }
 
       // Generate a new access token
-      const newAccessToken = generateToken({ id: user.id });
+      const newAccessToken = await generateToken(user._id);
 
       // Set the new access token in the response cookies
       res.cookie("token", newAccessToken, {
@@ -49,6 +49,7 @@ const protect = asyncHandler(async (req, res, next) => {
       req.user = user;
       next();
     } catch (error) {
+      console.log("error", error);
       res.status(500).send({ message: "Internal server error." });
     }
   });

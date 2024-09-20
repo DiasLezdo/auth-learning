@@ -7,6 +7,8 @@ const sendMail = require("../utils/Mail/SendMail");
 const { generateToken, verifyToken } = require("../utils/common/token");
 const passport = require("passport");
 const { default: axios } = require("axios");
+const speakeasy = require("speakeasy");
+const qrcode = require("qrcode");
 
 const generateOtp = async (
   req,
@@ -57,6 +59,18 @@ const generateOtp = async (
     console.log("error", error);
     throw new Error("Email not sent, please try again");
   }
+};
+
+const userResponseChanger = async (value) => {
+  const userResponse = value.toObject();
+  delete userResponse.password;
+  delete userResponse.role;
+  delete userResponse.createdAt;
+  delete userResponse.updatedAt;
+  delete userResponse.__v;
+  delete userResponse.mfa_secret;
+
+  return userResponse;
 };
 
 // Register User
@@ -172,12 +186,7 @@ exports.verifyUser = asyncHandler(async (req, res) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-    const userResponse = updatedUser.toObject();
-    delete userResponse.password;
-    delete userResponse.role;
-    delete userResponse.createdAt;
-    delete userResponse.updatedAt;
-    delete userResponse.__v;
+    const userResponse = await userResponseChanger(updatedUser);
 
     const jwtToken = generateToken(userResponse._id);
 
@@ -275,7 +284,7 @@ exports.withoutPackage2 = asyncHandler(async (req, res) => {
           return res.status(404).json({ message: "User not found." });
         }
 
-        userResponse = updatedUser.toObject();
+        userResponse = await userResponseChanger(updatedUser);
       } else {
         const user = await User.create({
           first_name: given_name,
@@ -284,14 +293,9 @@ exports.withoutPackage2 = asyncHandler(async (req, res) => {
           oauthId: id,
           verified: true,
         });
-        userResponse = user.toObject();
-      }
 
-      delete userResponse.password;
-      delete userResponse.role;
-      delete userResponse.createdAt;
-      delete userResponse.updatedAt;
-      delete userResponse.__v;
+        userResponse = await userResponseChanger(user);
+      }
 
       const jwtToken = generateToken(userResponse._id);
 
@@ -468,7 +472,9 @@ exports.twitterPassportCallback = asyncHandler(async (req, res) => {
         { verified: true },
         { new: true }
       );
-      userResponse = updatedUser ? updatedUser.toObject() : null;
+      userResponse = updatedUser
+        ? await userResponseChanger(updatedUser)
+        : null;
     } else {
       const newUser = await User.create({
         first_name: displayName,
@@ -477,19 +483,13 @@ exports.twitterPassportCallback = asyncHandler(async (req, res) => {
         oauthId: id,
         verified: true,
       });
-      userResponse = newUser.toObject();
+
+      userResponse = await userResponseChanger(newUser);
     }
 
     if (!userResponse) {
       return res.status(404).json({ message: "User not found." });
     }
-
-    // Clean the response object by removing sensitive fields
-    delete userResponse.password;
-    delete userResponse.role;
-    delete userResponse.createdAt;
-    delete userResponse.updatedAt;
-    delete userResponse.__v;
 
     // Generate JWT token
     const jwtToken = generateToken(userResponse._id);
@@ -581,7 +581,7 @@ exports.githubCallback = asyncHandler(async (req, res) => {
           return res.status(404).json({ message: "User not found." });
         }
 
-        userResponse = updatedUser.toObject();
+        userResponse = await userResponseChanger(updatedUser);
       } else {
         const user = await User.create({
           first_name: name,
@@ -591,14 +591,8 @@ exports.githubCallback = asyncHandler(async (req, res) => {
           oauthId: id,
           verified: true,
         });
-        userResponse = user.toObject();
+        userResponse = await userResponseChanger(user);
       }
-
-      delete userResponse.password;
-      delete userResponse.role;
-      delete userResponse.createdAt;
-      delete userResponse.updatedAt;
-      delete userResponse.__v;
 
       const jwtToken = generateToken(userResponse._id);
 
@@ -666,12 +660,58 @@ exports.loginUser = asyncHandler(async (req, res) => {
       throw new Error(" Invalid password");
     }
 
-    const userResponse = user.toObject();
-    delete userResponse.password;
-    delete userResponse.role;
-    delete userResponse.createdAt;
-    delete userResponse.updatedAt;
-    delete userResponse.__v;
+    if (user.mfa == 1) {
+      const otpDigit = Math.floor(100000 + Math.random() * 900000);
+
+      await new Token({
+        userId: user._id,
+        token: otpDigit,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 1 * (60 * 1000),
+      }).save();
+
+      // Reset Email message we send too url (above link)
+      const message = `
+       <h2>Hello ${user.name}</h2>
+       <p>Here is your OTP</p>  
+       <p>This OTP is valid for only a minute.</p>
+       <h1 style="color:red;">${otpDigit}</h1>
+       <p>Regards...</p>
+       <img src="https://i.ibb.co/4pDNDk1/avatar.png" alt="odu />
+       <p>Odu Bibin Team</p>
+     `;
+      const subject = "2F Security";
+      const send_to = user.email;
+      const sent_from = process.env.EMAIL_USER;
+
+      try {
+        await sendMail(subject, message, send_to, sent_from);
+        // res.status(200).json({ success: true, message: "Reset Email Sent" });
+        const { _id, first_name, email, phone, photo, bio, last_name, mfa } =
+          user;
+        return res.status(202).json({
+          message: "2FAuthorized to login (Check your email)",
+          data: {
+            mfa,
+            id: _id,
+          },
+        });
+      } catch (error) {
+        res.status(500);
+        console.log("error", error);
+        throw new Error("Email not sent, please try again");
+      }
+    } else if (user.mfa == 2) {
+      return res.status(202).json({
+        message: "2FAuthorized to login(Check your auth app)",
+        data: {
+          id: user._id,
+          mfa: user.mfa,
+        },
+      });
+    }
+
+    const userResponse = await userResponseChanger(user);
 
     const jwtToken = generateToken(user._id);
 
@@ -719,6 +759,151 @@ exports.logoutUser = asyncHandler(async (req, res) => {
 });
 
 // -------------- * * * * * * * * --------------------------------------
+
+// change user MFA Enable or disable
+
+exports.mfaUpdate = asyncHandler(async (req, res) => {
+  try {
+    const { mfa } = req.body;
+
+    const user = req.user;
+
+    console.log("user", user, mfa);
+
+    // Check if both userId and otp are provided
+    if (mfa == undefined || mfa == null) {
+      return res.status(400).json({ message: "MFA null" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      user._id,
+      { mfa: mfa },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      // Handle case where the user is not found
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const userResponse = await userResponseChanger(updatedUser);
+
+    res.status(200).json({
+      message: "MFA updated",
+      data: {
+        user: userResponse,
+      },
+    });
+  } catch (error) {
+    res.status(400);
+    throw new Error("Verifying User Error: " + error.message);
+  }
+});
+
+exports.mfa2fGenerator = asyncHandler(async (req, res) => {
+  try {
+    const user = req.user;
+
+    if (!user) {
+      // Handle case where the user is not found
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const secret = speakeasy.generateSecret({
+      // name: "YourAppName (YourEmailOrUser)",
+      name: `Learning-auth (${user.email})`,
+    });
+
+    // Generate a QR code for Google Authenticator
+    qrcode.toDataURL(secret.otpauth_url, (err, data_url) => {
+      if (err) {
+        res.status(400);
+        throw new Error("QR code not generated: " + err.message);
+      }
+      res.status(200).json({
+        message: "MFA QR Generated",
+        qrCode: data_url,
+        secret: secret.base32,
+      });
+    });
+  } catch (error) {
+    res.status(400);
+    throw new Error("Verifying User Error: " + error.message);
+  }
+});
+
+exports.mfa2fConfirm = asyncHandler(async (req, res) => {
+  const { secret, mfa } = req.body;
+
+  try {
+    const user = req.user;
+
+    // Save the secret temporarily (in practice, store it in the user DB)
+    const updatedUser = await User.findByIdAndUpdate(
+      user._id,
+      { mfa_secret: secret, mfa: mfa },
+      { new: true }
+    );
+
+    const userResponse = await userResponseChanger(updatedUser);
+    res.status(200).json({
+      message: "MFA updated",
+      user: userResponse,
+    });
+  } catch (error) {
+    res.status(400);
+    throw new Error("Verifying User Error: " + error.message);
+  }
+});
+
+exports.mfa2fVerify = asyncHandler(async (req, res) => {
+  try {
+    const { token, id } = req.body;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      res.status(400);
+      throw new Error(" User doesn't exist .Please register");
+    } else {
+      const verified = speakeasy.totp.verify({
+        secret: user.mfa_secret, // Retrieve this from the database
+        encoding: "base32",
+        token: token,
+        window: 5,
+      });
+
+      console.log("verified", verified);
+
+      if (verified) {
+        const userResponse = await userResponseChanger(user);
+
+        const jwtToken = generateToken(userResponse._id);
+
+        // Send token in HTTP-only cookie
+        res.cookie("token", jwtToken, {
+          path: "/",
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production", // simplify secure option
+          sameSite: process.env.NODE_ENV === "production" ? "Strict" : "Lax", // Add sameSite for better security
+          maxAge: 15 * 60 * 1000, // 15 minutes
+        });
+
+        res.status(200).json({
+          message: "MFA Verified!!",
+          user: userResponse,
+        });
+      } else {
+        return res.status(400).json({ message: "Invalid token" });
+      }
+    }
+  } catch (error) {
+    res.status(400);
+    throw new Error("Verifying User Error: " + error.message);
+  }
+});
+
+// -------------------------------* * * * * * * --------------------------------------
 
 // getUser profile or data
 

@@ -59,6 +59,16 @@ const userSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    mfa: {
+      type: Number,
+      default: 0,
+    },
+    mfa_secret: {
+      type: String,
+      required: function () {
+        return this.mfa == 2;
+      },
+    },
   },
   {
     timestamps: true,

@@ -21,6 +21,10 @@ const {
   twitterRegister,
   twitterCallback,
   twitterPassportCallback,
+  mfaUpdate,
+  mfa2fGenerator,
+  mfa2fConfirm,
+  mfa2fVerify,
 } = require("../controller/user");
 const protect = require("../middleware/auth");
 
@@ -62,6 +66,12 @@ router.get(
   }),
   twitterPassportCallback // Call controller for further processing
 );
+
+// MFA Update
+router.post("/mfaUpdate", protect, mfaUpdate);
+router.get("/mfaUpdate/2fa/generate", protect, mfa2fGenerator);
+router.post("/mfaUpdate/2fa/confirm", protect, mfa2fConfirm);
+router.post("/mfaUpdate/2fa/verify", mfa2fVerify);
 
 // ----------------------------------------------------------------
 router.get("/getuser", protect, getUser);
