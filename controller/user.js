@@ -29,7 +29,7 @@ const generateOtp = async (
 
   // Reset Email message we send too url (above link)
   const message = `
-       <h2>Hello ${user.name}</h2>
+       <h2>Hello ${user?.first_name}</h2>
        <p>Here is your OTP</p>  
        <p>This OTP is valid for only a minute.</p>
        <h1 style="color:red;">${otpDigit}</h1>
@@ -905,6 +905,95 @@ exports.mfa2fVerify = asyncHandler(async (req, res) => {
 
 // -------------------------------* * * * * * * --------------------------------------
 
+// Forgot Password
+
+exports.forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User does not exist");
+  }
+
+  try {
+    return generateOtp(
+      req,
+      res,
+      user,
+      "Check your email And Verify",
+      "Password Change OTP",
+      200
+    );
+  } catch (error) {
+    res.status(400);
+    throw new Error("Unknow Error" + error.message);
+  }
+});
+
+exports.verifyEmailPasswordRequest = asyncHandler(async (req, res) => {
+  try {
+    const { otp, email } = req.body;
+    const { userId } = req.params;
+
+    // Check if both userId and otp are provided
+    if (!userId || !otp) {
+      return res.status(400).json({ message: "User ID and OTP are required." });
+    }
+
+    // Find the token in the database
+    const token = await Token.findOne({ userId, token: otp });
+
+    if (!token) {
+      // If the token is not found, send a response indicating the failure
+      return res
+        .status(404)
+        .json({ message: "Token not found or invalid OTP." });
+    }
+
+    return res.status(200).json({
+      message: "Email verified successfully.",
+      user: {
+        email,
+        _id: userId,
+      },
+    });
+  } catch (error) {
+    res.status(400);
+    throw new Error("Verifying User Error: " + error.message);
+  }
+});
+
+exports.changePasswordViaForgot = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  const user = await User.findById(userId);
+  const { newpassword } = req.body;
+
+  if (!user) {
+    res.status(400);
+    throw new Error("User not found, please signup");
+  }
+
+  // Save new password
+  if (user && newpassword) {
+    try {
+      user.password = newpassword;
+      await user.save();
+      res.status(200).json({ message: "Password change successful" });
+    } catch (error) {
+      res.status(400);
+      throw new Error("Password Not Stored in User Data!!");
+    }
+    // password save to db
+  } else {
+    res.status(400);
+    throw new Error("Password Not Saved");
+  }
+});
+
+// ----------------------------------- * * * * * * * --------------------------------
+
 // getUser profile or data
 
 exports.getUser = asyncHandler(async (req, res) => {
@@ -1003,69 +1092,6 @@ exports.changePassword = asyncHandler(async (req, res) => {
   } else {
     res.status(400);
     throw new Error("Old password is incorrect");
-  }
-});
-
-// forgot password
-
-exports.forgotPassword = asyncHandler(async (req, res) => {
-  const { email } = req.body;
-  const user = await User.findOne({ email });
-
-  if (!user) {
-    res.status(404);
-    throw new Error("User does not exist");
-  }
-  // Delete token if it already exists in DB
-  // userId is a token model in DB and the user._id is a user model in DB {token model have the user information from user db we colabrate it }
-  let token = await Token.findOne({ userId: user._id });
-  if (token) {
-    // why we delete coz somebody forgot thier password often so thats why!! if already exist multiple token stored in db (storage overflow)
-    await token.deleteOne();
-  }
-
-  // Create Reset Token{its generate the long string encoded with user id}
-  let resetToken = crypto.randomBytes(32).toString("hex") + user._id;
-  console.log(resetToken);
-
-  // Hash token before saving to DB
-  const hashedToken = crypto
-    .createHash("sha256")
-    .update(resetToken)
-    .digest("hex");
-
-  // Save Token to DB {we are save token model in db}
-  await new Token({
-    // [key:value] already know
-    // uesrId from token model key , user._id from user db value (exact user who entered user db email)
-    userId: user._id,
-    token: hashedToken,
-    createdAt: Date.now(),
-    expiresAt: Date.now() + 30 * (60 * 1000), // Thirty minutes
-  }).save();
-
-  // Construct Reset Url {this link we send in the mail} without hashed token ...but in db is hashed token encoded
-  const resetUrl = `${process.env.FRONTEND_URL}/resetpassword/${resetToken}`;
-
-  // Reset Email message we send too url (above link)
-  const message = `
-       <h2>Hello ${user.name}</h2>
-       <p>Please use the url below to reset your password</p>  
-       <p>This reset link is valid for only 30minutes.</p>
-       <a href=${resetUrl} clicktracking=off>${resetUrl}</a>
-       <p>Regards...</p>
-       <p>Inventory Team</p>
-     `;
-  const subject = "Password Reset Request";
-  const send_to = user.email;
-  const sent_from = process.env.EMAIL_USER;
-
-  try {
-    await sendMail(subject, message, send_to, sent_from);
-    res.status(200).json({ success: true, message: "Reset Email Sent" });
-  } catch (error) {
-    res.status(500);
-    throw new Error("Email not sent, please try again");
   }
 });
 

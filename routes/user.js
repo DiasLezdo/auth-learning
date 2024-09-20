@@ -25,6 +25,8 @@ const {
   mfa2fGenerator,
   mfa2fConfirm,
   mfa2fVerify,
+  verifyEmailPasswordRequest,
+  changePasswordViaForgot,
 } = require("../controller/user");
 const protect = require("../middleware/auth");
 
@@ -73,12 +75,16 @@ router.get("/mfaUpdate/2fa/generate", protect, mfa2fGenerator);
 router.post("/mfaUpdate/2fa/confirm", protect, mfa2fConfirm);
 router.post("/mfaUpdate/2fa/verify", mfa2fVerify);
 
+// forgot password
+router.post("/forgotPassword", forgotPassword);
+router.post("/forgotPassword/verify/:userId", verifyEmailPasswordRequest);
+router.post("/forgotPassword/change/:userId", changePasswordViaForgot);
+
 // ----------------------------------------------------------------
 router.get("/getuser", protect, getUser);
 router.get("/loggedin", loginStatus);
 router.patch("/updateuser", protect, updateUser);
 router.patch("/changepassword", protect, changePassword);
-router.post("/forgotPassword", forgotPassword);
 router.put("/resetPassword/:resetToken", resetPassword);
 
 module.exports = router;
