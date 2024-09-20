@@ -29,6 +29,7 @@ const {
   changePasswordViaForgot,
 } = require("../controller/user");
 const protect = require("../middleware/auth");
+const uploadProfile = require("../middleware/multer/profileMedia");
 
 // for api order is an important in express
 router.post("/register", registerUser);
@@ -80,10 +81,12 @@ router.post("/forgotPassword", forgotPassword);
 router.post("/forgotPassword/verify/:userId", verifyEmailPasswordRequest);
 router.post("/forgotPassword/change/:userId", changePasswordViaForgot);
 
+// update user
+router.patch("/updateuser", uploadProfile.single("image"), protect, updateUser);
 // ----------------------------------------------------------------
 router.get("/getuser", protect, getUser);
 router.get("/loggedin", loginStatus);
-router.patch("/updateuser", protect, updateUser);
+
 router.patch("/changepassword", protect, changePassword);
 router.put("/resetPassword/:resetToken", resetPassword);
 

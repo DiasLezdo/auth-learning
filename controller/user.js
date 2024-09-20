@@ -994,6 +994,39 @@ exports.changePasswordViaForgot = asyncHandler(async (req, res) => {
 
 // ----------------------------------- * * * * * * * --------------------------------
 
+// Update User Data
+
+exports.updateUser = asyncHandler(async (req, res) => {
+  // req.user._id from middleware request
+  const user = await User.findById(req.user._id);
+
+  if (user) {
+    const { first_name, last_name, phone, bio, photo, account_type } = user;
+
+    // user sometimes upadte only one or 2,3 or non so that
+    user.first_name = req.body.first_name || first_name;
+    user.phone = req.body.phone || phone;
+    user.bio = req.body.bio || bio;
+    user.last_name = req.body.last_name || last_name;
+    user.account_type = req.body.account_type || account_type;
+    user.photo = req.file ? req.file.path : photo; // if there is a file, replace the old file with the new one. else keep the old file.
+
+    const updatedUser = await user.save();
+
+    const userResponse = await userResponseChanger(updatedUser);
+
+    res.status(200).json({
+      user: userResponse,
+      message: "User updated successfully",
+    });
+  } else {
+    res.status(404);
+    throw new Error("User not found");
+  }
+});
+
+// ----------------------------------- * * * * * * --------------------------------
+
 // getUser profile or data
 
 exports.getUser = asyncHandler(async (req, res) => {
@@ -1030,35 +1063,6 @@ exports.loginStatus = asyncHandler(async (req, res) => {
     return res.json(true);
   }
   return res.json(false);
-});
-
-// Update User
-exports.updateUser = asyncHandler(async (req, res) => {
-  // req.user._id from middleware request
-  const user = await User.findById(req.user._id);
-
-  if (user) {
-    const { name, email, photo, phone, bio } = user;
-    user.email = email;
-    // user sometimes upadte only one or 2,3 or non so that
-    user.name = req.body.name || name;
-    user.phone = req.body.phone || phone;
-    user.bio = req.body.bio || bio;
-    user.photo = req.body.photo || photo;
-
-    const updatedUser = await user.save();
-    res.status(200).json({
-      _id: updatedUser._id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      photo: updatedUser.photo,
-      phone: updatedUser.phone,
-      bio: updatedUser.bio,
-    });
-  } else {
-    res.status(404);
-    throw new Error("User not found");
-  }
 });
 
 // change password
