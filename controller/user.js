@@ -69,6 +69,8 @@ const userResponseChanger = async (value) => {
   delete userResponse.updatedAt;
   delete userResponse.__v;
   delete userResponse.mfa_secret;
+  delete userResponse.friendRequests;
+  delete userResponse.friends;
 
   return userResponse;
 };

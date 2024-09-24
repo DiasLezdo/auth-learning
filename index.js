@@ -13,6 +13,7 @@ const errorHandler = require("./middleware/error");
 // ---
 // const ourRoutes = require("./routes/our");
 const userRoutes = require("./routes/user");
+const friendRoutes = require("./routes/friends");
 
 const allowedOrigin = process.env.FRONTEND_URI; // Update this to your client’s origin
 
@@ -47,6 +48,7 @@ app.get("/", (req, res) => {
 
 // app.use("/api", ourRoutes);
 app.use("/api", userRoutes);
+app.use("/api/friend", friendRoutes);
 
 // error middleware should after api routes
 app.use(errorHandler);

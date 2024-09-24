@@ -12,6 +12,11 @@ const userSchema = mongoose.Schema(
       type: String,
       require: false,
     },
+    user_name: {
+      type: String,
+      required: false,
+      unique: true,
+    },
     email: {
       type: String,
       require: [true, "Please Add a email"],
@@ -69,24 +74,83 @@ const userSchema = mongoose.Schema(
         return this.mfa == 2;
       },
     },
+    friends: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    friendRequests: [
+      // {
+      //   from:
+
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+
+      // if we want log and condition based add friend -> we can use it
+      // status: {
+      //   type: String,
+      //   enum: ["pending", "accepted", "declined"],
+      //   default: "pending",
+      // },
+      // },
+    ],
   },
   {
     timestamps: true,
   }
 );
 
-//   Encrypt password before saving to DB
+// //   Encrypt password before saving to DB
+
+// userSchema.pre("save", async function (next) {
+//   // below line only modify when password change otherwise like name ,email,phone those time dont change simply ignore it
+//   // if this password not modify then i don't want to do anything just ignore next()
+//   if (!this.isModified("password")) {
+//     return next();
+//   }
+
+//   // Hash password
+//   const salt = await bcrypt.genSalt(10);
+//   const hashedPassword = await bcrypt.hash(this.password, salt);
+//   this.password = hashedPassword;
+//   next();
+// });
+
+// ------------------------- * * * * * * * * * * * * * * * * *------------------------------------------------------
+
+// Generate a unique user_name based on first_name and hashing password togather
 userSchema.pre("save", async function (next) {
-  // below line only modify when password change otherwise like name ,email,phone those time dont change simply ignore it
-  // if this password not modify then i don't want to do anything just ignore next()
-  if (!this.isModified("password")) {
-    return next();
+  const user = this;
+
+  // Hash password if it's modified
+  if (user.isModified("password")) {
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(user.password, salt);
   }
 
-  // Hash password
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(this.password, salt);
-  this.password = hashedPassword;
+  // Generate user_name if not provided
+  if (!user.user_name) {
+    const baseUserName = user.first_name.toLowerCase().replace(/\s+/g, "");
+
+    // Function to check if the generated user_name is unique
+    const checkUniqueUserName = async (name, suffix = 0) => {
+      const userName = suffix > 0 ? `${name}${suffix}` : name;
+      const existingUser = await mongoose.models.User.findOne({
+        user_name: userName,
+      });
+      if (existingUser) {
+        return checkUniqueUserName(name, suffix + 1);
+      }
+      return userName;
+    };
+
+    // Assign the unique user_name
+    user.user_name = await checkUniqueUserName(baseUserName);
+  }
+
   next();
 });
 
