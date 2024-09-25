@@ -41,7 +41,7 @@ const userSchema = mongoose.Schema(
       type: String,
       require: [true, "Please Add a photo"],
       default:
-        "https://res.cloudinary.com/dz4augbi8/image/upload/v1725962982/o-auth-project/common/128_apeydj.png",
+        "https://res.cloudinary.com/dz4augbi8/image/upload/v1727247993/o-auth-project/common/profile-icon-design-free-vector_bq04ym.jpg",
     },
     phone: {
       type: String,
