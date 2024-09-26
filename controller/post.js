@@ -42,15 +42,15 @@ exports.getPosts = async (req, res) => {
 
     // Fetch posts with pagination, sorting, and exclude __v
     const posts = await Post.find(query)
-      .select("-__v") // Exclude __v
+      .select("-__v -comments") // Exclude __v
       .populate({
         path: "user",
         select: "first_name last_name user_name photo -_id", // Exclude _id from user fields
       })
-      .populate({
-        path: "comments.user",
-        select: "first_name last_name user_name photo -_id", // Exclude _id from comment user fields
-      })
+      // .populate({
+      //   path: "comments.user",
+      //   select: "first_name last_name user_name photo -_id", // Exclude _id from comment user fields
+      // })
       .sort({ createdAt: -1 }) // Sort by most recent
       .skip((page - 1) * limit) // Skip for pagination
       .limit(parseInt(limit)); // Limit per page
@@ -228,7 +228,19 @@ exports.addComment = async (req, res) => {
 
     post.comments.push({ user: userId, text });
     await post.save();
-    res.status(200).json({ message: "Comment added successfully", post });
+
+    const populatedPost = await Post.findById(postId).populate({
+      path: "comments.user",
+      select: "first_name last_name user_name photo -_id", // Adjust fields as needed
+    });
+    // Sort comments by createdAt in descending order
+    populatedPost.comments.sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+
+    res
+      .status(200)
+      .json({ message: "Comment added successfully", post: populatedPost });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -276,10 +288,17 @@ exports.getComments = async (req, res) => {
   try {
     const postId = req.params.postId;
 
-    const post = await Post.findById(postId).populate("comments.user", "name");
+    const post = await Post.findById(postId).populate(
+      "comments.user",
+      "first_name photo user_name last_name -_id"
+    );
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    res.status(200).json({ comments: post.comments });
+    const sortedComments = post.comments.sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+
+    res.status(200).json({ comments: sortedComments });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
