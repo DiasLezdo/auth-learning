@@ -27,6 +27,7 @@ const {
   mfa2fVerify,
   verifyEmailPasswordRequest,
   changePasswordViaForgot,
+  getOtherUser,
 } = require("../controller/user");
 const protect = require("../middleware/auth");
 const uploadProfile = require("../middleware/multer/profileMedia");
@@ -83,6 +84,10 @@ router.post("/forgotPassword/change/:userId", changePasswordViaForgot);
 
 // update user
 router.patch("/updateuser", uploadProfile.single("image"), protect, updateUser);
+
+// get Other Users
+router.get("/getOtheruser/:user_name", protect, getOtherUser);
+
 // ----------------------------------------------------------------
 router.get("/getuser", protect, getUser);
 router.get("/loggedin", loginStatus);

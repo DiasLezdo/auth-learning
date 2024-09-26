@@ -7,7 +7,7 @@ const multer = require("multer");
 
 // Get all public posts or posts by a specific user
 router.get("/all", protect, postController.getPosts); // To fetch public posts
-router.get("/all/user/:userId", protect, postController.getPosts); // To fetch posts by a specific user
+router.get("/all/user/:user_name", protect, postController.getPosts); // To fetch posts by a specific user
 
 // Routes for posts
 router.post(
@@ -24,10 +24,10 @@ router.post(
             .status(400)
             .json({ error: "File too large. Max size is 25MB." });
         }
-        return res.status(400).json({ error: "rr" + err.message });
+        return res.status(400).json({ error: err.message });
       } else if (err) {
         // An unknown error occurred during the file upload
-        return res.status(400).json({ error: "rr" + err.message });
+        return res.status(400).json({ error: err.message });
       }
       // If no errors, proceed to the next middleware/controller
       next();

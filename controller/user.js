@@ -1031,8 +1031,32 @@ exports.updateUser = asyncHandler(async (req, res) => {
 
 // getUser profile or data
 
+exports.getOtherUser = asyncHandler(async (req, res) => {
+  try {
+    const user = await User.findOne({ user_name: req.params.user_name });
+    if (user) {
+      const { user_name, first_name, photo, last_name, bio } = user;
+      res.status(200).json({
+        user_name,
+        first_name,
+        photo,
+        last_name,
+        bio,
+      });
+    } else {
+      return res.status(400).json({ message: "User not found" });
+    }
+  } catch (error) {
+    res.status(500);
+    throw new Error(error.message);
+  }
+});
+
+// ------------------------------------------- * * * * * ----------------------------
+
 exports.getUser = asyncHandler(async (req, res) => {
   // inthis case req.user._id ==> req.user from request of middleware and thats's a exact user(db) so
+
   const user = await User.findById(req.user._id);
 
   if (user) {
