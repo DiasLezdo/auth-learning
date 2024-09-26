@@ -22,6 +22,7 @@ exports.getPosts = async (req, res) => {
         return res.status(404).json({ message: "User not found" });
       }
 
+      // based conditions try to avoid get private posts from other users
       if (
         isPublic !== "true" &&
         currentUserId.toString() !== user._id.toString()
