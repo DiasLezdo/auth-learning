@@ -2,6 +2,53 @@ const Post = require("../models/post");
 const User = require("../models/User");
 const cloudinary = require("../config/cloudinary"); // Import Cloudinary config
 
+const url = require("url");
+const path = require("path");
+
+/**
+ * Extracts the public ID from a Cloudinary URL.
+ *
+ * @param {string} cloudinaryUrl - The URL of the Cloudinary resource.
+ * @returns {string|null} - The extracted public ID or null if extraction fails.
+ */
+function extractPublicId(cloudinaryUrl) {
+  try {
+    const parsedUrl = new URL(cloudinaryUrl);
+    const pathname = parsedUrl.pathname; // e.g., /demo/image/upload/v1623456789/folder_name/my_image.jpg
+
+    // Split the pathname to isolate the part after '/upload/'
+    const uploadIndex = pathname.indexOf("/upload/");
+    if (uploadIndex === -1) {
+      console.error("Invalid Cloudinary URL: Missing /upload/ segment.");
+      return null;
+    }
+
+    // Extract the segment after '/upload/'
+    let publicIdWithVersion = pathname.substring(
+      uploadIndex + "/upload/".length
+    ); // e.g., v1623456789/folder_name/my_image.jpg
+
+    // Remove versioning if present (e.g., v1623456789/)
+    if (publicIdWithVersion.startsWith("v")) {
+      const firstSlash = publicIdWithVersion.indexOf("/");
+      if (firstSlash !== -1) {
+        publicIdWithVersion = publicIdWithVersion.substring(firstSlash + 1); // e.g., folder_name/my_image.jpg
+      }
+    }
+
+    // Remove the file extension
+    const publicId = publicIdWithVersion.replace(
+      path.extname(publicIdWithVersion),
+      ""
+    ); // e.g., folder_name/my_image
+
+    return publicId;
+  } catch (error) {
+    console.error("Error parsing URL:", error);
+    return null;
+  }
+}
+
 // Get Posts
 exports.getPosts = async (req, res) => {
   try {
@@ -118,6 +165,8 @@ exports.addPost = async (req, res) => {
     //   }
     // }
 
+    console.log("req.file", req.file);
+
     if (req.file) {
       mediaUrl = req.file.path;
       const mimeType = req.file.mimetype.toLowerCase();
@@ -209,7 +258,15 @@ exports.deletePost = async (req, res) => {
     // If the post has a media URL, delete the media file from Cloudinary
     if (post.mediaUrl) {
       // Extract the public ID from the Cloudinary URL
-      const publicId = post.mediaUrl.split("/").pop().split(".")[0]; // This assumes a standard Cloudinary URL format
+      // const publicId = post.mediaUrl.split("/").pop().split(".")[0]; // This assumes a standard Cloudinary URL format
+
+      const publicId = extractPublicId(post.mediaUrl);
+
+      console.log("publicId", publicId);
+
+      if (!publicId) {
+        return res.status(400).json({ message: "Invalid media URL" });
+      }
 
       await cloudinary.uploader.destroy(publicId, (error, result) => {
         if (error) {
