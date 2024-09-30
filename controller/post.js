@@ -269,9 +269,7 @@ exports.deleteComment = async (req, res) => {
         (c) => c._id.toString() !== commentId
       );
       await post.save();
-      return res
-        .status(200)
-        .json({ message: "Comment deleted successfully", post });
+      return res.status(200).json({ message: "Comment deleted successfully" });
     } else {
       // Neither post owner nor comment owner
       return res
@@ -299,6 +297,93 @@ exports.getComments = async (req, res) => {
     );
 
     res.status(200).json({ comments: sortedComments });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.likePost = async (req, res) => {
+  try {
+    const postId = req.params.postId;
+    const userId = req.user._id; // Assuming you have user ID in req.user
+
+    // Find the post
+    const post = await Post.findById(postId);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    // Check if the user has already liked the post
+    if (post.likes.includes(userId)) {
+      return res.status(400).json({ message: "Post already liked" });
+    }
+
+    // Add user ID to the likes array
+    post.likes.push(userId);
+    await post.save();
+
+    res.status(200).json({ message: "Post liked successfully", post });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.unlikePost = async (req, res) => {
+  try {
+    const postId = req.params.postId;
+    const userId = req.user._id; // Assuming you have user ID in req.user
+
+    // Find the post
+    const post = await Post.findById(postId);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    // Check if the user has not liked the post
+    if (!post.likes.includes(userId)) {
+      return res.status(400).json({ message: "Post not liked yet" });
+    }
+
+    // Remove user ID from the likes array
+    post.likes = post.likes.filter((id) => id.toString() !== userId.toString());
+    await post.save();
+
+    res.status(200).json({ message: "Post unliked successfully", post });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// get post
+exports.getPost = async (req, res) => {
+  try {
+    const postId = req.params.postId;
+    const userId = req.user._id;
+
+    // Find the post and populate user information and comments
+    const post = await Post.findById(postId)
+      .select("-__v -comments")
+      .populate("user", "first_name last_name user_name photo"); // Populate author info
+    // .populate({
+    //   path: "comments.user", // Populate user info for comments
+    //   select: "first_name last_name user_name photo -_id",
+    // });
+
+    // Check if the post exists
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    // Check if the post is private
+    if (!post.isPublic && !post.user.equals(userId)) {
+      return res
+        .status(403)
+        .json({ message: "You do not have permission to view this post" });
+    }
+
+    const isLiked = post.likes.includes(userId);
+
+    // Create a response object with isLiked field
+    const response = {
+      ...post.toObject(), // Convert Mongoose document to a plain object
+      isLiked, // Add isLiked field
+    };
+
+    res.status(200).json(response);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -54,4 +54,11 @@ router.delete(
 );
 router.get("/comments/:postId", protect, postController.getComments);
 
+// Like a post
+router.post("/like/:postId", protect, postController.likePost);
+
+// Unlike a post
+router.post("/unlike/:postId", protect, postController.unlikePost);
+router.get("/postdetails/:postId", protect, postController.getPost);
+
 module.exports = router;
