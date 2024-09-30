@@ -56,7 +56,7 @@ const generateOtp = async (
     });
   } catch (error) {
     res.status(500);
-    console.log("error", error);
+    
     throw new Error("Email not sent, please try again");
   }
 };
@@ -95,7 +95,7 @@ exports.registerUser = asyncHandler(async (req, res, next) => {
   // Check if user email already exists
   const userExists = await User.findOne({ email });
 
-  console.log("userExists", userExists);
+  
 
   // userExists but Not Veriified
   if (userExists) {
@@ -396,7 +396,7 @@ exports.twitterCallback = asyncHandler(async (req, res) => {
 
     const userProfile = userInfoResponse.data;
 
-    console.log("userPro", userProfile);
+    
 
     // Process user profile and either update or create a new user in your database
     // const { id_str, email, name, profile_image_url_https } = userProfile;
@@ -461,7 +461,7 @@ exports.twitterPassportCallback = asyncHandler(async (req, res) => {
   try {
     const userProfile = req.user;
 
-    console.log("userPro", userProfile);
+    
 
     // Process user profile and either update or create a new user in your database
     const { id, email, displayName, profile } = userProfile;
@@ -566,7 +566,7 @@ exports.githubCallback = asyncHandler(async (req, res) => {
 
     const userData = userProfileResponse.data;
 
-    console.log("userData", userData);
+
 
     if (userData) {
       const { id, email, name, avatar_url } = userData;
@@ -700,7 +700,7 @@ exports.loginUser = asyncHandler(async (req, res) => {
         });
       } catch (error) {
         res.status(500);
-        console.log("error", error);
+        
         throw new Error("Email not sent, please try again");
       }
     } else if (user.mfa == 2) {
@@ -770,7 +770,7 @@ exports.mfaUpdate = asyncHandler(async (req, res) => {
 
     const user = req.user;
 
-    console.log("user", user, mfa);
+    
 
     // Check if both userId and otp are provided
     if (mfa == undefined || mfa == null) {
@@ -875,7 +875,7 @@ exports.mfa2fVerify = asyncHandler(async (req, res) => {
         window: 5,
       });
 
-      console.log("verified", verified);
+    
 
       if (verified) {
         const userResponse = await userResponseChanger(user);

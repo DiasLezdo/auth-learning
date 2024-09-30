@@ -16,7 +16,7 @@ router.post(
   (req, res, next) => {
     // Handle the file upload
     uploadPost.single("media")(req, res, (err) => {
-      console.log("req", req.file);
+     
       if (err instanceof multer.MulterError) {
         // A Multer error occurred during the file upload
         if (err.code === "LIMIT_FILE_SIZE") {

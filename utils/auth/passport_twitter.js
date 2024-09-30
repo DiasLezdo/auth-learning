@@ -11,7 +11,7 @@ passport.use(
     },
     async (token, tokenSecret, profile, done) => {
       try {
-        console.log("profile", profile);
+        
 
         // Process user profile from Twitter
         const userData = {

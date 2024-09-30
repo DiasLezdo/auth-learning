@@ -56,14 +56,13 @@ exports.getPosts = async (req, res) => {
     const { isPublic, page = 1, limit = 10 } = req.query;
     const currentUserId = req.user._id; // Get current user's ID from middleware
 
-    console.log("current", currentUserId.toString());
 
     let query = {};
 
     // If a specific user is requested by user_name
     if (user_name) {
       const user = await User.findOne({ user_name });
-      console.log("current", user._id);
+     
 
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -165,7 +164,7 @@ exports.addPost = async (req, res) => {
     //   }
     // }
 
-    console.log("req.file", req.file);
+    
 
     if (req.file) {
       mediaUrl = req.file.path;
@@ -261,8 +260,6 @@ exports.deletePost = async (req, res) => {
       // const publicId = post.mediaUrl.split("/").pop().split(".")[0]; // This assumes a standard Cloudinary URL format
 
       const publicId = extractPublicId(post.mediaUrl);
-
-      console.log("publicId", publicId);
 
       if (!publicId) {
         return res.status(400).json({ message: "Invalid media URL" });
