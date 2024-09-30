@@ -47,6 +47,11 @@ exports.getPosts = async (req, res) => {
         path: "user",
         select: "first_name last_name user_name photo -_id", // Exclude _id from user fields
       })
+      .populate({
+        path: "likes",
+        // select: "first_name last_name user_name photo -_id", // Exclude _id from comment user fields
+        select: "first_name last_name user_name photo", // Exclude _id from comment user fields
+      })
       // .populate({
       //   path: "comments.user",
       //   select: "first_name last_name user_name photo -_id", // Exclude _id from comment user fields
@@ -58,11 +63,19 @@ exports.getPosts = async (req, res) => {
     // Add isLiked field to each post
     const postsWithIsLiked = posts.map((post) => {
       const isLiked = post.likes.some(
-        (like) => like.toString() === currentUserId.toString()
+        (like) => like._id.toString() === currentUserId.toString()
       ); // Check if current user has liked the post
       return {
         ...post.toObject(), // Convert Mongoose document to plain JS object
         isLiked, // Add isLiked field
+        likes: post.likes.map(
+          ({ first_name, last_name, user_name, photo }) => ({
+            first_name,
+            last_name,
+            user_name,
+            photo,
+          })
+        ),
       };
     });
 
@@ -171,7 +184,7 @@ exports.editPost = async (req, res) => {
     }
 
     await post.save();
-    res.status(200).json({ message: "Post updated successfully", post });
+    res.status(200).json({ message: "Post updated successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -209,7 +222,8 @@ exports.deletePost = async (req, res) => {
     }
 
     // Delete the post from the database
-    await post.remove();
+    // await post.remove();
+    await Post.deleteOne({ _id: postId });
     res.status(200).json({ message: "Post and media deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -320,7 +334,7 @@ exports.likePost = async (req, res) => {
     post.likes.push(userId);
     await post.save();
 
-    res.status(200).json({ message: "Post liked successfully", post });
+    res.status(200).json({ message: "Post liked successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -344,7 +358,7 @@ exports.unlikePost = async (req, res) => {
     post.likes = post.likes.filter((id) => id.toString() !== userId.toString());
     await post.save();
 
-    res.status(200).json({ message: "Post unliked successfully", post });
+    res.status(200).json({ message: "Post unliked successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -359,7 +373,12 @@ exports.getPost = async (req, res) => {
     // Find the post and populate user information and comments
     const post = await Post.findById(postId)
       .select("-__v -comments")
-      .populate("user", "first_name last_name user_name photo"); // Populate author info
+      .populate("user", "first_name last_name user_name photo -_id") // Populate author info
+      .populate({
+        path: "likes",
+        // select: "first_name last_name user_name photo -_id", // Exclude _id from comment user fields
+        select: "first_name last_name user_name photo", // Exclude _id from comment user fields
+      });
     // .populate({
     //   path: "comments.user", // Populate user info for comments
     //   select: "first_name last_name user_name photo -_id",
@@ -375,12 +394,28 @@ exports.getPost = async (req, res) => {
         .json({ message: "You do not have permission to view this post" });
     }
 
-    const isLiked = post.likes.includes(userId);
+    // const isLiked = post.likes.includes(userId);
 
-    // Create a response object with isLiked field
+    // // Create a response object with isLiked field
+    // const response = {
+    //   ...post.toObject(), // Convert Mongoose document to a plain object
+    //   isLiked, // Add isLiked field
+    // };
+    // Check if the current user has liked the post
+    const isLiked = post.likes.some(
+      (like) => like._id.toString() === userId.toString()
+    );
+
+    // Format the response object
     const response = {
       ...post.toObject(), // Convert Mongoose document to a plain object
       isLiked, // Add isLiked field
+      likes: post.likes.map(({ first_name, last_name, user_name, photo }) => ({
+        first_name,
+        last_name,
+        user_name,
+        photo,
+      })), // Format likes to exclude _id
     };
 
     res.status(200).json(response);
