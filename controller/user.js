@@ -480,7 +480,7 @@ exports.twitterPassportCallback = asyncHandler(async (req, res) => {
     } else {
       const newUser = await User.create({
         first_name: displayName,
-        photo: profile,
+        // photo: profile,
         email,
         oauthId: id,
         verified: true,
@@ -518,7 +518,7 @@ exports.twitterPassportCallback = asyncHandler(async (req, res) => {
   }
 });
 
-// ------------------------------------------------------
+// ----------------------------------------------------------
 
 // GITHUB
 
@@ -588,7 +588,7 @@ exports.githubCallback = asyncHandler(async (req, res) => {
         const user = await User.create({
           first_name: name,
           // last_name: family_name,
-          photo: avatar_url,
+          // photo: avatar_url,
           email,
           oauthId: id,
           verified: true,
@@ -620,7 +620,7 @@ exports.githubCallback = asyncHandler(async (req, res) => {
   }
 });
 
-// --------------- * * * * * * * * -------------------------
+// --------------- * * * * * * * * --------------------------
 
 // login user
 
@@ -760,7 +760,7 @@ exports.logoutUser = asyncHandler(async (req, res) => {
   }
 });
 
-// -------------- * * * * * * * * --------------------------------------
+// -------------- * * * * * * * * ---------------------------
 
 // change user MFA Enable or disable
 
@@ -905,7 +905,7 @@ exports.mfa2fVerify = asyncHandler(async (req, res) => {
   }
 });
 
-// -------------------------------* * * * * * * --------------------------------------
+// ------------------------------- * * * * * * * --------------------------------------
 
 // Forgot Password
 

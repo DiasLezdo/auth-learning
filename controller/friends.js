@@ -1,5 +1,9 @@
 const asyncHandler = require("express-async-handler");
 const User = require("../models/User");
+const {
+  getResizedImageUrl,
+  extractPublicId,
+} = require("../utils/common/imageOptimize");
 
 // Get Random User
 exports.getRandomUsers = asyncHandler(async (req, res) => {
@@ -102,7 +106,7 @@ exports.getRequestedUsers = asyncHandler(async (req, res) => {
       user_name: user.user_name,
       first_name: user.first_name,
       last_name: user.last_name,
-      photo: user.photo,
+      photo: getResizedImageUrl(extractPublicId(user.photo)),
     }));
 
     // Return the response in the required format
@@ -139,7 +143,7 @@ exports.getFriends = asyncHandler(async (req, res) => {
       user_name: user.user_name,
       first_name: user.first_name,
       last_name: user.last_name,
-      photo: user.photo,
+      photo: getResizedImageUrl(extractPublicId(user.photo)),
     }));
 
     // Return the response in the required format
@@ -296,3 +300,57 @@ exports.declineFriendRequest = async (req, res) => {
       .json({ message: "Server error", error: error.message });
   }
 };
+
+// Remove Friend
+exports.removeFriend = asyncHandler(async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { friend_user_name } = req.body;
+
+    // Validate the input
+    if (!friend_user_name) {
+      return res.status(400).json({ message: "Friend user_name is required" });
+    }
+
+    // Find the friend by user_name
+    const friend = await User.findOne({ user_name: friend_user_name });
+    if (!friend) {
+      return res.status(404).json({ message: "Friend user not found" });
+    }
+
+    // Prevent users from removing themselves
+    if (userId.toString() === friend._id.toString()) {
+      return res.status(400).json({ message: "You cannot remove yourself" });
+    }
+
+    // Fetch the current user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Current user not found" });
+    }
+
+    // Check if the specified user is actually a friend
+    const isFriend = user.friends.includes(friend._id);
+    if (!isFriend) {
+      return res.status(400).json({ message: "The specified user is not your friend" });
+    }
+
+    // Remove the friend from the current user's friends list
+    user.friends = user.friends.filter(
+      (friendId) => friendId.toString() !== friend._id.toString()
+    );
+    await user.save();
+
+    // Remove the current user from the friend's friends list
+    friend.friends = friend.friends.filter(
+      (friendId) => friendId.toString() !== userId.toString()
+    );
+    await friend.save();
+
+    return res.status(200).json({ message: "Friend removed successfully" });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
+  }
+});

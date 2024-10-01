@@ -1,53 +1,8 @@
 const Post = require("../models/post");
 const User = require("../models/User");
 const cloudinary = require("../config/cloudinary"); // Import Cloudinary config
+const { getResizedImageUrl, extractPublicId } = require("../utils/common/imageOptimize");
 
-const url = require("url");
-const path = require("path");
-
-/**
- * Extracts the public ID from a Cloudinary URL.
- *
- * @param {string} cloudinaryUrl - The URL of the Cloudinary resource.
- * @returns {string|null} - The extracted public ID or null if extraction fails.
- */
-function extractPublicId(cloudinaryUrl) {
-  try {
-    const parsedUrl = new URL(cloudinaryUrl);
-    const pathname = parsedUrl.pathname; // e.g., /demo/image/upload/v1623456789/folder_name/my_image.jpg
-
-    // Split the pathname to isolate the part after '/upload/'
-    const uploadIndex = pathname.indexOf("/upload/");
-    if (uploadIndex === -1) {
-      console.error("Invalid Cloudinary URL: Missing /upload/ segment.");
-      return null;
-    }
-
-    // Extract the segment after '/upload/'
-    let publicIdWithVersion = pathname.substring(
-      uploadIndex + "/upload/".length
-    ); // e.g., v1623456789/folder_name/my_image.jpg
-
-    // Remove versioning if present (e.g., v1623456789/)
-    if (publicIdWithVersion.startsWith("v")) {
-      const firstSlash = publicIdWithVersion.indexOf("/");
-      if (firstSlash !== -1) {
-        publicIdWithVersion = publicIdWithVersion.substring(firstSlash + 1); // e.g., folder_name/my_image.jpg
-      }
-    }
-
-    // Remove the file extension
-    const publicId = publicIdWithVersion.replace(
-      path.extname(publicIdWithVersion),
-      ""
-    ); // e.g., folder_name/my_image
-
-    return publicId;
-  } catch (error) {
-    console.error("Error parsing URL:", error);
-    return null;
-  }
-}
 
 // Get Posts
 exports.getPosts = async (req, res) => {
@@ -56,13 +11,11 @@ exports.getPosts = async (req, res) => {
     const { isPublic, page = 1, limit = 10 } = req.query;
     const currentUserId = req.user._id; // Get current user's ID from middleware
 
-
     let query = {};
 
     // If a specific user is requested by user_name
     if (user_name) {
       const user = await User.findOne({ user_name });
-     
 
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -122,6 +75,12 @@ exports.getPosts = async (req, res) => {
             photo,
           })
         ),
+        user: {
+          first_name: post.user.first_name,
+          last_name: post.user.last_name,
+          user_name: post.user.user_name,
+          photo: getResizedImageUrl(extractPublicId(post.user.photo)),
+        },
       };
     });
 
@@ -163,8 +122,6 @@ exports.addPost = async (req, res) => {
     //     return res.status(400).json({ error: "Invalid file type" });
     //   }
     // }
-
-    
 
     if (req.file) {
       mediaUrl = req.file.path;
@@ -364,7 +321,19 @@ exports.getComments = async (req, res) => {
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
     );
 
-    res.status(200).json({ comments: sortedComments });
+    res.status(200).json({
+      comments: sortedComments.map((comment) => {
+        return {
+          ...comment.toObject(),
+          user: {
+            first_name: comment.user.first_name,
+            last_name: comment.user.last_name,
+            user_name: comment.user.user_name,
+            photo: getResizedImageUrl(extractPublicId(comment.user.photo)),
+          },
+        };
+      }),
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
