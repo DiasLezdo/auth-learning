@@ -127,12 +127,19 @@ exports.getMessages = asyncHandler(async (req, res) => {
       { sender: otherUser._id, receiver: userId },
     ],
   })
-    .sort({ createdAt: 1 }) // Oldest first
+    .sort({ createdAt: -1 }) // Oldest first
     .skip(skip)
     .limit(limit)
     .select("-__v")
     .populate("sender", "user_name first_name last_name photo -_id")
     .populate("receiver", "user_name first_name last_name photo -_id");
+
+  const totalMessages = await Message.countDocuments({
+    $or: [
+      { sender: userId, receiver: otherUser._id },
+      { sender: otherUser._id, receiver: userId },
+    ],
+  });
 
   res.status(200).json({
     message: "Messages retrieved successfully",
@@ -140,6 +147,8 @@ exports.getMessages = asyncHandler(async (req, res) => {
     pagination: {
       currentPage: page,
       pageSize: limit,
+      totalPages: Math.ceil(totalMessages / limit),
+      totalMessages: totalMessages,
     },
   });
 });
