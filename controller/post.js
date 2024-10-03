@@ -1,8 +1,10 @@
 const Post = require("../models/post");
 const User = require("../models/User");
 const cloudinary = require("../config/cloudinary"); // Import Cloudinary config
-const { getResizedImageUrl, extractPublicId } = require("../utils/common/imageOptimize");
-
+const {
+  getResizedImageUrl,
+  extractPublicId,
+} = require("../utils/common/imageOptimize");
 
 // Get Posts
 exports.getPosts = async (req, res) => {
@@ -49,7 +51,7 @@ exports.getPosts = async (req, res) => {
       .populate({
         path: "likes",
         // select: "first_name last_name user_name photo -_id", // Exclude _id from comment user fields
-        select: "first_name last_name user_name photo", // Exclude _id from comment user fields
+        select: "first_name last_name user_name photo", // Exclude _id from comment user fields //can here remove -_id but we didn't 😂😂
       })
       // .populate({
       //   path: "comments.user",
