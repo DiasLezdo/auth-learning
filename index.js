@@ -7,6 +7,7 @@ const cookieParse = require("cookie-parser");
 const passport = require("passport");
 const session = require("express-session");
 require("./utils/auth/passport_twitter");
+const http = require("http");
 // ---errors
 const errorHandler = require("./middleware/error");
 
@@ -57,6 +58,17 @@ app.use("/api/message", messageRoutes);
 // error middleware should after api routes
 app.use(errorHandler);
 
+// socket server
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+const socket = require("./config/socket");
+const io = socket.initSocket(server);
+
+// console.log("io", io);
+
 // DB first
 
 const port = 8080;
@@ -64,7 +76,10 @@ const port = 8080;
 const startApp = async () => {
   try {
     await connectDB();
-    app.listen(port, () => {
+    // app.listen(port, () => {
+    //   console.log(`Example app listening on port ${port}`);
+    // });
+    server.listen(port, () => {
       console.log(`Example app listening on port ${port}`);
     });
   } catch (error) {

@@ -37,7 +37,7 @@ exports.extractPublicId = (cloudinaryUrl) => {
     // Split the pathname to isolate the part after '/upload/'
     const uploadIndex = pathname.indexOf("/upload/");
     if (uploadIndex === -1) {
-      console.error("Invalid Cloudinary URL: Missing /upload/ segment.");
+      // console.error("Invalid Cloudinary URL: Missing /upload/ segment.");
       return null;
     }
 

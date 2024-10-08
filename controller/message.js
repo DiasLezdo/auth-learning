@@ -7,7 +7,7 @@ const cloudinary = require("../config/cloudinary");
 // @desc    Send a message (with optional file attachments)
 // @route   POST /api/messages/send
 // @access  Private
-exports.sendMessage = asyncHandler(async (req, res) => {
+exports.sendMessage = asyncHandler(async (req, res, io) => {
   const senderId = req.user._id;
   const { receiver_user_name, text } = req.body;
 
@@ -68,26 +68,34 @@ exports.sendMessage = asyncHandler(async (req, res) => {
       .populate("sender", "first_name last_name user_name photo -_id") // Select desired fields
       .populate("receiver", "first_name last_name user_name photo -_id"); // Select desired fields
 
+    const messageData = {
+      _id: message._id,
+      sender: {
+        first_name: populatedMessage.sender.first_name,
+        last_name: populatedMessage.sender.last_name,
+        user_name: populatedMessage.sender.user_name,
+        photo: populatedMessage.sender.photo,
+      },
+      receiver: {
+        first_name: populatedMessage.receiver.first_name,
+        last_name: populatedMessage.receiver.last_name,
+        user_name: populatedMessage.receiver.user_name,
+        photo: populatedMessage.receiver.photo,
+      },
+      text: message.text,
+      files: message.files,
+      createdAt: message.createdAt,
+    };
+
+    // Emit the message to the receiver's room
+    io.to(receiver._id.toString()).emit("receiveMessage", messageData);
+
+    // Optionally, emit back to the sender for confirmation
+    io.to(senderId.toString()).emit("messageSent", messageData);
+
     res.status(201).json({
       message: "Message sent successfully",
-      data: {
-        _id: message._id,
-        sender: {
-          first_name: populatedMessage.sender.first_name,
-          last_name: populatedMessage.sender.last_name,
-          user_name: populatedMessage.sender.user_name,
-          photo: populatedMessage.sender.photo,
-        },
-        receiver: {
-          first_name: populatedMessage.receiver.first_name,
-          last_name: populatedMessage.receiver.last_name,
-          user_name: populatedMessage.receiver.user_name,
-          photo: populatedMessage.receiver.photo,
-        },
-        text: message.text,
-        files: message.files,
-        createdAt: message.createdAt,
-      },
+      data: messageData,
     });
   } catch (error) {
     return res

@@ -8,6 +8,7 @@ const {
   deleteMessage,
 } = require("../controller/message");
 const multer = require("multer");
+const { getIO } = require("../config/socket");
 const router = express.Router();
 
 // Apply authentication and rate limiting middleware
@@ -40,14 +41,15 @@ router.post("/send", (req, res, next) => {
       return res.status(400).json({ error: errorMessage });
     } else if (err) {
       // An unknown error occurred when uploading.
-      console.log('err.message', err.message)
+      console.log("err.message", err.message);
       return res
         .status(500)
-        .json({ error: "An unknown error occurred during file upload."});
+        .json({ error: "An unknown error occurred during file upload." });
     }
 
     // Everything went fine.
-    sendMessage(req, res);
+    const io = getIO(); // Retrieve the Socket.IO instance
+    sendMessage(req, res, io);
   });
 });
 
