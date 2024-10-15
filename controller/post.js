@@ -398,7 +398,7 @@ exports.getPost = async (req, res) => {
     // Find the post and populate user information and comments
     const post = await Post.findById(postId)
       .select("-__v -comments")
-      .populate("user", "first_name last_name user_name photo -_id") // Populate author info
+      .populate("user", "first_name last_name user_name photo ") // Populate author info
       .populate({
         path: "likes",
         // select: "first_name last_name user_name photo -_id", // Exclude _id from comment user fields
@@ -411,6 +411,9 @@ exports.getPost = async (req, res) => {
 
     // Check if the post exists
     if (!post) return res.status(404).json({ message: "Post not found" });
+
+    console.log("post.user", post.user);
+    console.log("userId", userId);
 
     // Check if the post is private
     if (!post.isPublic && !post.user.equals(userId)) {
@@ -435,6 +438,12 @@ exports.getPost = async (req, res) => {
     const response = {
       ...post.toObject(), // Convert Mongoose document to a plain object
       isLiked, // Add isLiked field
+      user: {
+        first_name: post.user.first_name,
+        last_name: post.user.last_name,
+        user_name: post.user.user_name,
+        photo: post.user.photo,
+      },
       likes: post.likes.map(({ first_name, last_name, user_name, photo }) => ({
         first_name,
         last_name,
