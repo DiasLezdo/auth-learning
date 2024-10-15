@@ -57,7 +57,10 @@ router.post("/send", (req, res, next) => {
 router.get("/:userName", getMessages);
 
 // Route to mark messages as read
-router.patch("/:userName/read", markMessagesAsRead);
+router.patch("/:userName/read", (req, res, next) => {
+  const io = getIO(); // Retrieve the Socket.IO instance
+  markMessagesAsRead(req, res, io);
+});
 
 // Route to delete a message
 router.delete("/:messageId", deleteMessage);

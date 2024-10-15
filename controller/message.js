@@ -164,7 +164,7 @@ exports.getMessages = asyncHandler(async (req, res) => {
 // @desc    Mark messages as read between authenticated user and another user
 // @route   PATCH /api/messages/:userName/read
 // @access  Private
-exports.markMessagesAsRead = asyncHandler(async (req, res) => {
+exports.markMessagesAsRead = asyncHandler(async (req, res, io) => {
   const userId = req.user._id;
   const { userName } = req.params;
 
@@ -175,14 +175,42 @@ exports.markMessagesAsRead = asyncHandler(async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Update messages where receiver is the authenticated user and sender is the other user
-    const result = await Message.updateMany(
+    // Step 2: Find messages that are unread from the other user to the authenticated user
+    const messagesToUpdate = await Message.find(
       { sender: otherUser._id, receiver: userId, read: false },
+      { _id: 1 } // Only select the _id field
+    );
+
+    if (messagesToUpdate.length === 0) {
+      return res.status(200).json({
+        message: "No new messages to mark as read.",
+        data: [],
+      });
+    }
+
+    // Extract the IDs of the messages to update
+    const messageIds = messagesToUpdate.map((msg) => msg._id);
+
+    // Step 3: Update the messages to set 'read' to true
+    const updateResult = await Message.updateMany(
+      { _id: { $in: messageIds } },
       { $set: { read: true } }
     );
 
+    // Step 4: Retrieve specific fields of the updated messages
+    const updatedMessages = await Message.find(
+      { _id: { $in: messageIds } },
+      { _id: 1, read: 1, updatedAt: 1 } // Specify the fields to return
+    );
+
+    // Emit 'messagesSeen' event to the sender
+    io.to(otherUser._id.toString()).emit("messagesSeen", {
+      data: updatedMessages,
+    });
+
     res.status(200).json({
-      message: `${result.nModified} messages marked as read`,
+      message: `${updateResult.nModified} messages marked as read.`,
+      data: updatedMessages, // Return specific fields of the updated messages
     });
   } catch (error) {
     return res
