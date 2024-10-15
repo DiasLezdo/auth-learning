@@ -63,6 +63,9 @@ router.patch("/:userName/read", (req, res, next) => {
 });
 
 // Route to delete a message
-router.delete("/:messageId", deleteMessage);
+router.delete("/:messageId", (req, res, next) => {
+  const io = getIO(); // Retrieve the Socket.IO instance
+  deleteMessage(req, res, io);
+});
 
 module.exports = router;

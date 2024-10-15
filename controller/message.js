@@ -222,7 +222,7 @@ exports.markMessagesAsRead = asyncHandler(async (req, res, io) => {
 // @desc    Delete a message
 // @route   DELETE /api/messages/:messageId
 // @access  Private
-exports.deleteMessage = asyncHandler(async (req, res) => {
+exports.deleteMessage = asyncHandler(async (req, res, io) => {
   const userId = req.user._id;
   const { messageId } = req.params;
 
@@ -250,7 +250,15 @@ exports.deleteMessage = asyncHandler(async (req, res) => {
         .delete_resources(filesDelete)
         .then((result) => console.log(result));
     }
-    await Message.findByIdAndDelete(message._id);
+    const deletedMessage = await Message.findByIdAndDelete(message._id);
+
+    console.log("deletedMessage", deletedMessage);
+
+    // Emit 'messagesDeleted' event to the sender
+    // io.to(deletedMessage.receiver._id.toString()).emit("messagesDeleted", {
+    io.to(deletedMessage.receiver.toString()).emit("messagesDeleted", {
+      data: deletedMessage,
+    });
 
     res.status(200).json({ message: "Message deleted successfully" });
   } catch (error) {
